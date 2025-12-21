@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1024303038464",
+    "project_id": "moneymanager-7cbde",
+    "storage_bucket": "moneymanager-7cbde.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1024303038464:android:b392969b4c5578bc8b58e5",
+        "android_client_info": {
+          "package_name": "com.example.moneymanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMAjMHtVP4vkr2Lh9p3XWn2rByMCT3iRQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
