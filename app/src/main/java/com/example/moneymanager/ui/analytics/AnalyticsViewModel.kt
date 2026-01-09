@@ -11,6 +11,9 @@ import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
 import java.time.temporal.WeekFields
+import com.example.moneymanager.data.BudgetRepository
+import java.time.temporal.ChronoUnit
+
 
 
 
@@ -27,10 +30,19 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
     private val _monthlyTrend = MutableLiveData<List<Pair<String, Double>>>()
     val monthlyTrend: LiveData<List<Pair<String, Double>>> = _monthlyTrend
 
+
     val selectedPeriod = MutableLiveData("Monthly")
+    private val budgetRepo =
+        BudgetRepository((application as MyApp).db.budgetDao())
+
+    private val _budgetHealthState = MutableLiveData<BudgetHealthUiState>()
+    val budgetHealthState: LiveData<BudgetHealthUiState> = _budgetHealthState
+
+
     private fun getPeriodRange(type: String): Pair<Long, Long> {
         val today = LocalDate.now()
         val zone = ZoneId.systemDefault()
+
 
         return if (type == "Monthly") {
             val start = today.withDayOfMonth(1)
@@ -58,6 +70,8 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun loadAnalytics() {
         viewModelScope.launch {
+            val zone = ZoneId.systemDefault()
+
 
             val period = selectedPeriod.value ?: "Monthly"
             val (startMillis, endMillis) = getPeriodRange(period)
@@ -77,7 +91,7 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
 
             _categorySpendings.postValue(categoryResult)
 
-            val zone = ZoneId.systemDefault()
+
 
             // ---------------- TREND DATA ----------------
             val trendResult =
@@ -106,6 +120,60 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
             _monthlyTrend.postValue(trendResult)
+            // ---------------- BUDGET HEALTH ----------------
+            val budget = budgetRepo.getOverallBudget(period)
+
+            if (budget == null || budget.overallAmount == null) {
+                _budgetHealthState.postValue(BudgetHealthUiState(isBudgetSet = false))
+                return@launch
+            }
+
+            val totalBudget = budget.overallAmount
+            val used = expenses.sumOf { it.amount }
+            val usedPercent =
+                if (totalBudget == 0.0) 0 else ((used / totalBudget) * 100).toInt()
+
+// ---- Days calculation ----
+
+            val today = LocalDate.now()
+
+            val startDate =
+                Instant.ofEpochMilli(budget.periodStart).atZone(zone).toLocalDate()
+            val endDate =
+                Instant.ofEpochMilli(budget.periodEnd).atZone(zone).toLocalDate()
+
+            val totalDays =
+                ChronoUnit.DAYS.between(startDate, endDate).toInt() + 1
+
+            val daysPassed =
+                ChronoUnit.DAYS.between(startDate, today).toInt().coerceAtLeast(0) + 1
+
+            val remainingDays =
+                (totalDays - daysPassed).coerceAtLeast(1)
+
+            val remainingAmount =
+                (totalBudget - used).coerceAtLeast(0.0)
+
+            val safeDailySpend =
+                remainingAmount / remainingDays
+
+            val status = when {
+                usedPercent < 70 -> "On Track"
+                usedPercent < 90 -> "At Risk"
+                else -> "Over Budget"
+            }
+
+            _budgetHealthState.postValue(
+                BudgetHealthUiState(
+                    isBudgetSet = true,
+                    status = status,
+                    usedPercent = usedPercent,
+                    remainingAmount = remainingAmount,
+                    remainingDays = remainingDays,
+                    safeDailySpend = safeDailySpend
+                )
+            )
+
         }
     }
 }

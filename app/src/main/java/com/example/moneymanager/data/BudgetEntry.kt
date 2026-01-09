@@ -9,6 +9,9 @@ data class BudgetEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
 
+    // 🔑 NEW: identifies which user this budget belongs to
+    val userId: String,
+
     // "Monthly" or "Weekly"
     val type: String,
 

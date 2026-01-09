@@ -29,6 +29,12 @@ class UserPreferences(private val context: Context) {
     // ---------------- BUDGET FLAGS ----------------
     private val BUDGET_CHANGED = booleanPreferencesKey("budget_changed")
     private val BUDGET_TYPE_KEY = stringPreferencesKey("budget_type")
+    private fun stringKey(userId: String, name: String) =
+        stringPreferencesKey("${userId}_$name")
+
+    private fun booleanKey(userId: String, name: String) =
+        booleanPreferencesKey("${userId}_$name")
+
 
     val budgetChanged: Flow<Boolean> =
         context.appDataStore.data.map { it[BUDGET_CHANGED] ?: false }
@@ -45,47 +51,66 @@ class UserPreferences(private val context: Context) {
     }
 
     // ---------------- USER PROFILE ----------------
-    companion object {
-        val NAME = stringPreferencesKey("name")
-        val EMAIL = stringPreferencesKey("email")
-        val PHONE = stringPreferencesKey("phone")
-        val CURRENCY = stringPreferencesKey("currency")
-        val PROFILE_COMPLETED = booleanPreferencesKey("profile_completed")
-        val DARK_THEME = booleanPreferencesKey("dark_theme")
-    }
+    // ---------------- USER PROFILE ----------------
+    private val DARK_THEME = booleanPreferencesKey("dark_theme")
 
-    val userName = context.userDataStore.data.map { it[NAME] ?: "" }
-    val userEmail = context.userDataStore.data.map { it[EMAIL] ?: "" }
-    val userPhone = context.userDataStore.data.map { it[PHONE] ?: "" }
 
-    val userCurrency = context.userDataStore.data.map {
-        it[CURRENCY] ?: "INR - ₹ India"
-    }
+    private fun profileKey(userId: String, name: String) =
+        stringPreferencesKey("${userId}_$name")
 
-    val isProfileCompleted =
-        context.userDataStore.data.map { it[PROFILE_COMPLETED] ?: false }
+    private fun profileBoolKey(userId: String, name: String) =
+        booleanPreferencesKey("${userId}_$name")
 
+    fun userName(userId: String): Flow<String> =
+        context.userDataStore.data.map {
+            it[profileKey(userId, "name")] ?: ""
+        }
+
+    fun userEmail(userId: String): Flow<String> =
+        context.userDataStore.data.map {
+            it[profileKey(userId, "email")] ?: ""
+        }
+
+    fun userPhone(userId: String): Flow<String> =
+        context.userDataStore.data.map {
+            it[profileKey(userId, "phone")] ?: ""
+        }
+
+    fun userCurrency(userId: String): Flow<String> =
+        context.userDataStore.data.map {
+            it[profileKey(userId, "currency")] ?: "INR - ₹ India"
+        }
+
+    fun isProfileCompleted(userId: String): Flow<Boolean> =
+        context.userDataStore.data.map {
+            it[profileBoolKey(userId, "profile_completed")] ?: false
+        }
     val isDarkTheme =
         context.userDataStore.data.map { it[DARK_THEME] ?: false }
 
     suspend fun saveUserDetails(
+        userId: String,
         name: String,
         email: String,
         phone: String,
         currency: String
     ) {
         context.userDataStore.edit {
-            it[NAME] = name
-            it[EMAIL] = email
-            it[PHONE] = phone
-            it[CURRENCY] = currency
-            it[PROFILE_COMPLETED] = true
+            it[profileKey(userId, "name")] = name
+            it[profileKey(userId, "email")] = email
+            it[profileKey(userId, "phone")] = phone
+            it[profileKey(userId, "currency")] = currency
+            it[profileBoolKey(userId, "profile_completed")] = true
         }
     }
 
-    suspend fun saveCurrency(currency: String) {
-        context.userDataStore.edit { it[CURRENCY] = currency }
+    suspend fun saveCurrency(userId: String, currency: String) {
+        context.userDataStore.edit {
+            it[profileKey(userId, "currency")] = currency
+        }
     }
+
+
 
     suspend fun saveDarkTheme(enabled: Boolean) {
         context.userDataStore.edit { it[DARK_THEME] = enabled }

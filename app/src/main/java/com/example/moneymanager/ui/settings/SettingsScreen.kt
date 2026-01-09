@@ -32,6 +32,8 @@ import com.google.firebase.auth.FirebaseAuth
 import android.widget.Toast
 
 
+
+
 @Composable
 fun SettingsScreen(
     navController: NavController,
@@ -60,9 +62,6 @@ fun SettingsScreen(
         "EUR - € Europe",
         "GBP - £ United Kingdom",
         "JPY - ¥ Japan",
-        "AUD - $ Australia",
-        "CAD - $ Canada",
-        "AED - د.إ UAE"
     )
 
     Scaffold(
@@ -184,12 +183,11 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text(it) },
                             onClick = {
-                                val symbol = it.substringAfter(" - ").substringBefore(" ")
-                                settingsViewModel.updateCurrency(symbol)
+                                settingsViewModel.updateCurrency(it) // ✅ save full value
                                 currencyMenuExpanded = false
                             }
-
                         )
+
                     }
                 }
             }
@@ -224,11 +222,16 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                settingsViewModel.saveUserProfile(name, email, phone, currency)
+                                settingsViewModel.saveUserProfile(
+                                    name = name,
+                                    email = email,
+                                    phone = phone,
+                                    currency = currency
+                                )
+                                settingsViewModel.disableEditMode()
                                 showSavedMessage = true
                             }
                         },
-
                         modifier = Modifier
                             .weight(1f)
                             .height(42.dp),
@@ -236,6 +239,8 @@ fun SettingsScreen(
                     ) {
                         Text("Save", fontSize = 15.sp)
                     }
+
+
 
                     Spacer(Modifier.width(12.dp))
                 }

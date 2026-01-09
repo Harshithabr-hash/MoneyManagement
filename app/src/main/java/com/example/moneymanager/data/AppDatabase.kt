@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ExpenseEntry::class, BudgetEntry::class],
-    version = 5
+    version = 7
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -27,10 +27,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // ✅ REQUIRED — EVEN IF EMPTY
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // No schema change
+                // no change
+            }
+        }
+
+        // 🔑 IMPORTANT: Multi-user support
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE expense_table ADD COLUMN userId TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE budget_table ADD COLUMN userId TEXT NOT NULL DEFAULT ''"
+                )
             }
         }
     }

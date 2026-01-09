@@ -29,10 +29,6 @@ import android.widget.Toast
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 
-
-
-
-
 @Composable
 fun AddEntryScreen(navController: NavController) {
 
@@ -87,6 +83,8 @@ fun AddEntryScreen(navController: NavController) {
     var showBudgetAlert by remember { mutableStateOf(false) }
     var budgetAlertConsumed by rememberSaveable { mutableStateOf(false) }
     var budgetExceeded by remember { mutableStateOf(false) }
+
+
 
 
 
@@ -277,6 +275,7 @@ fun AddEntryScreen(navController: NavController) {
 
                     // 2️⃣ Prepare entry object
                     val entry = ExpenseEntry(
+                        userId = "",
                         amount = amount.toDouble(),
                         category = category,
                         date = selectedDateMillis,
@@ -299,6 +298,10 @@ fun AddEntryScreen(navController: NavController) {
 
                     // 4️⃣ Expense → check budget in coroutine
                     scope.launch {
+                        val userId = com.google.firebase.auth.FirebaseAuth
+                            .getInstance()
+                            .currentUser
+                            ?.uid ?: return@launch   // ✅ valid here
 
                         val db = (context.applicationContext as MyApp).db
                         val expenseDao = db.expenseDao()
@@ -314,12 +317,15 @@ fun AddEntryScreen(navController: NavController) {
                         val monthStart = cal.timeInMillis
 
                         val monthlySpent =
-                            expenseDao.getExpensesAfter(monthStart)
+                            expenseDao.getExpensesAfter(userId, monthStart)
+
                                 .filter { it.type == "Expense" }
                                 .sumOf { it.amount }
 
                         val monthlyBudget =
-                            budgetDao.getOverallBudget("Monthly")?.overallAmount
+                            budgetDao.getOverallBudget(userId, "Monthly")?.overallAmount
+
+
 
                         // ---------- WEEK START ----------
                         val weekCal = Calendar.getInstance()
@@ -331,12 +337,13 @@ fun AddEntryScreen(navController: NavController) {
                         val weekStart = weekCal.timeInMillis
 
                         val weeklySpent =
-                            expenseDao.getExpensesAfter(weekStart)
+                            expenseDao.getExpensesAfter(userId, weekStart)
+
                                 .filter { it.type == "Expense" }
                                 .sumOf { it.amount }
 
                         val weeklyBudget =
-                            budgetDao.getOverallBudget("Weekly")?.overallAmount
+                            budgetDao.getOverallBudget(userId, "Weekly")?.overallAmount
 
                         val newMonthlyTotal = monthlySpent + entry.amount
                         val newWeeklyTotal = weeklySpent + entry.amount

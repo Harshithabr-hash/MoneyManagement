@@ -13,6 +13,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
+    private val uid: String?
+        get() = FirebaseAuth.getInstance().currentUser?.uid
+
 
     private val userPrefs = UserPreferences(application)
 
@@ -45,10 +48,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     val name = doc.getString("name") ?: ""
                     val email = doc.getString("email") ?: ""
                     val phone = doc.getString("phone") ?: ""
-                    val currency = doc.getString("currency") ?: "INR - ₹ India"
+
+
 
                     viewModelScope.launch {
-                        userPrefs.saveUserDetails(name, email, phone, currency)
+                        val currency =
+                            doc.getString("currency")
+                                ?: userPrefs.userCurrency(uid).first()
+                        userPrefs.saveUserDetails(uid, name, email, phone, currency)
+
                         _name.value = name
                         _email.value = email
                         _phone.value = phone
@@ -62,19 +70,28 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     init {
         loadUserProfileFromFirebase()
+        loadUserData()
     }
 
 
 
     private fun loadUserData() {
         viewModelScope.launch {
-            _name.value = userPrefs.userName.first()
-            _email.value = userPrefs.userEmail.first()
-            _phone.value = userPrefs.userPhone.first()
-            _currency.value = userPrefs.userCurrency.first()
-            _isProfileCompleted.value = userPrefs.isProfileCompleted.first()
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+                ?: return@launch
+
+            _name.value = userPrefs.userName(userId).first()
+            _email.value = userPrefs.userEmail(userId).first()
+            _phone.value = userPrefs.userPhone(userId).first()
+            _currency.value = userPrefs.userCurrency(userId).first()
+            _isProfileCompleted.value =
+                userPrefs.isProfileCompleted(userId).first()
         }
     }
+
+
+
+
 
     // Update individual fields (fixes your Unresolved Reference errors)
     fun updateName(newName: String) {
@@ -99,7 +116,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun updateCurrency(newCurrency: String) {
         viewModelScope.launch {
-            userPrefs.saveCurrency(newCurrency)
+            val userId = uid ?: return@launch
+            userPrefs.saveCurrency(userId, newCurrency)
+
             _currency.value = newCurrency
         }
     }
@@ -121,7 +140,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .addOnSuccessListener {
                 viewModelScope.launch {
                     // update local cache
-                    userPrefs.saveUserDetails(name, email, phone, currency)
+                    userPrefs.saveUserDetails(uid, name, email, phone, currency)
+
 
                     _name.value = name
                     _email.value = email

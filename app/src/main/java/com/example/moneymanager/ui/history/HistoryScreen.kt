@@ -29,13 +29,36 @@ import java.util.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
 import com.example.moneymanager.R
+import com.example.moneymanager.data.UserPreferences
 
 
 @Composable
 fun HistoryScreen(navController: NavController) {
-
+    // ---- USER BASED CURRENCY ----
     val context = LocalContext.current
+    val userId = com.google.firebase.auth.FirebaseAuth
+        .getInstance()
+        .currentUser
+        ?.uid
+
+    val userPrefs = remember { UserPreferences(context) }
+
+    val currency by remember(userId) {
+        userPrefs.userCurrency(userId ?: "")
+    }.collectAsState(initial = "INR - ₹ India")
+
+    val currencySymbol = remember(currency) {
+        currency
+            .substringAfter(" - ", "")
+            .substringBefore(" ")
+            .ifBlank { "₹" }
+    }
+
+
+
     val repo = ExpenseRepository((context.applicationContext as MyApp).db.expenseDao())
+
+
 
     // ⭐ Load all database transactions
     var allTransactions by remember { mutableStateOf(listOf<ExpenseEntry>()) }
@@ -199,8 +222,12 @@ fun HistoryScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filtered) { txn ->
-                        HistoryItem_DB(txn)
+                        HistoryItem_DB(
+                            txn = txn,
+                            currencySymbol = currencySymbol
+                        )
                     }
+
                 }
             }
         }
@@ -212,7 +239,9 @@ fun HistoryScreen(navController: NavController) {
 // ⭐ Show Actual ExpenseEntry Data From ROOM
 // ------------------------------------------------------------
 @Composable
-fun HistoryItem_DB(txn: ExpenseEntry) {
+fun HistoryItem_DB(txn: ExpenseEntry, currencySymbol: String
+) {
+
 
     val amountColor = if (txn.type == "Expense") Color.Red else Color(0xFF2E7D32)
     val formattedDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(txn.date))
@@ -255,11 +284,16 @@ fun HistoryItem_DB(txn: ExpenseEntry) {
             Column(horizontalAlignment = Alignment.End) {
 
                 Text(
-                    (if (txn.type == "Expense") "- ₹" else "+ ₹") + txn.amount,
+                    (if (txn.type == "Expense")
+                        "- $currencySymbol"
+                    else
+                        "+ $currencySymbol"
+                            ) + txn.amount,
                     color = amountColor,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp
                 )
+
 
                 Spacer(Modifier.height(4.dp))
 
@@ -290,7 +324,7 @@ fun getCategoryIcon(category: String): Int {
         "Food & Dining" -> com.example.moneymanager.R.drawable.dining
         "Transportation" -> com.example.moneymanager.R.drawable.bus
         "Shopping" -> com.example.moneymanager.R.drawable.shopping
-        "Bills" -> com.example.moneymanager.R.drawable.dollars
+        "Bills" -> com.example.moneymanager.R.drawable.bills
         "Entertainment" -> com.example.moneymanager.R.drawable.net
         "Health" -> com.example.moneymanager.R.drawable.health
         "Travel" -> com.example.moneymanager.R.drawable.earth
@@ -303,7 +337,7 @@ fun getCategoryIcon(category: String): Int {
 
 fun getPaymentIcon(method: String?): Int {
     return when (method) {
-        "Cash" -> com.example.moneymanager.R.drawable.cash
+        "Cash" -> com.example.moneymanager.R.drawable.cashier
         "UPI" -> com.example.moneymanager.R.drawable.upi
         "Credit Card" -> com.example.moneymanager.R.drawable.debit
         "Debit Card" -> com.example.moneymanager.R.drawable.debit

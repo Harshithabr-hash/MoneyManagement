@@ -16,7 +16,7 @@ fun getCategoryIcon(category: String): Int = when (category) {
 }
 
 fun getPaymentIcon(method: String?): Int = when (method) {
-    "Cash" -> R.drawable.cash
+    "Cash" -> R.drawable.cashier
     "UPI" -> R.drawable.upi
     "Credit Card", "Debit Card" -> R.drawable.debit
     "Net Banking" -> R.drawable.bank

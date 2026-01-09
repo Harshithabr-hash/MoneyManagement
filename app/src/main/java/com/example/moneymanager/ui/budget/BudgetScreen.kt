@@ -337,7 +337,7 @@ fun getCategoryIcon(category: String): Int = when (category) {
     "Food and Dining" -> R.drawable.dining
     "Shopping" -> R.drawable.shopping
     "Transportation" -> R.drawable.bus
-    "Bills" -> R.drawable.dollars
+    "Bills" -> R.drawable.bills
     "Entertainment" -> R.drawable.net
     else -> R.drawable.others
 }

@@ -31,6 +31,8 @@ import com.example.moneymanager.ui.analytics.CategoryPieChart
 import com.example.moneymanager.ui.analytics.MonthlyBarChart
 import com.example.moneymanager.ui.analytics.AnalyticsViewModel
 import kotlin.text.toFloat
+import androidx.compose.foundation.clickable
+import com.example.moneymanager.data.UserPreferences
 
 
 // ------------------------------------------------------------
@@ -38,9 +40,30 @@ import kotlin.text.toFloat
 // ------------------------------------------------------------
 @Composable
 fun DashboardScreen(navController: NavController) {
-
-
+    // ---- USER BASED CURRENCY ----
     val context = LocalContext.current
+    val userId = com.google.firebase.auth.FirebaseAuth
+        .getInstance()
+        .currentUser
+        ?.uid
+
+    val userPrefs = remember { UserPreferences(context) }
+
+    val currency by remember(userId) {
+        userPrefs.userCurrency(userId ?: "")
+    }.collectAsState(initial = "INR - ₹ India")
+
+    val currencySymbol = remember(currency) {
+        currency
+            .substringAfter(" - ", "")
+            .substringBefore(" ")
+            .ifBlank { "₹" }
+    }
+
+
+
+
+
     val expenseRepo =
         ExpenseRepository((context.applicationContext as MyApp).db.expenseDao())
     val budgetRepo =
@@ -79,6 +102,9 @@ fun DashboardScreen(navController: NavController) {
     // 🔴 BUDGET EXCEED LOGIC
     val isWeeklyExceeded = weeklyBudget != null && weeklySpent > weeklyBudget!!
     val isMonthlyExceeded = monthlyBudget != null && monthlySpent > monthlyBudget!!
+
+
+
 
 
     // 🔹 SELECTED BUDGET DISPLAY LOGIC
@@ -177,7 +203,10 @@ fun DashboardScreen(navController: NavController) {
                 budgetRemaining = displayRemaining,
                 mostSpent = mostSpent,
                 categoryData = categoryData,
-                monthlyData = monthlyData
+                monthlyData = monthlyData,
+                currencySymbol = currencySymbol
+
+
 
             )
         }
@@ -200,7 +229,8 @@ fun DashboardScreen(navController: NavController) {
         budgetRemaining: Double,
         mostSpent: Pair<String, Double>?,
         categoryData: Map<String, Double>,
-        monthlyData: List<Pair<String, Double>>
+        monthlyData: List<Pair<String, Double>>,
+        currencySymbol: String
     ) {
 
         Column(
@@ -254,7 +284,7 @@ fun DashboardScreen(navController: NavController) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "₹${totalIncome - totalExpense}",
+                            "$currencySymbol${totalIncome - totalExpense}",
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -263,24 +293,58 @@ fun DashboardScreen(navController: NavController) {
             }
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                StatCard("Income", totalIncome, Color(0xFFE6F7EC), Color(0xFF2E7D32))
-                StatCard("Expenses", totalExpense, Color(0xFFFFE6E6), Color(0xFFC62828))
+                StatCard("Income", totalIncome, currencySymbol, Color(0xFFE6F7EC), Color(0xFF2E7D32))
+                StatCard("Expenses", totalExpense, currencySymbol, Color(0xFFFFE6E6), Color(0xFFC62828))
+
             }
 
 
             Spacer(Modifier.height(18.dp))
             // 🔹 EMPTY STATE: NO BUDGET SET
             if (budgetType == null || budgetAmount == null) {
-                Text(
-                    text = "No budget set yet.\nCreate a budget to track your spending.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp),
-                    textAlign = TextAlign.Center
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Icon(
+                        painter = painterResource(id = R.drawable.wallet),
+                        contentDescription = "Set Budget",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable {
+                                navController.navigate("budget")
+                            }
+                    )
+
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "No budget set yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+                        text = "Create a budget to track your spending",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+
+                    )
+                    Text(
+                        text = "Tap to set budget",
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                }
             }
+
 
 
             // 🔹 SELECTED BUDGET CARD
@@ -300,8 +364,9 @@ fun DashboardScreen(navController: NavController) {
                             else -> Color.Red
                         }
 
-                        Text("Total Budget: ₹$budgetAmount")
-                        Text("Spent: ₹$budgetSpent")
+                        Text("Total Budget: $currencySymbol$budgetAmount")
+                        Text("Spent: $currencySymbol$budgetSpent")
+
 
                         Spacer(Modifier.height(8.dp))
 
@@ -320,13 +385,13 @@ fun DashboardScreen(navController: NavController) {
 
                         if (exceededAmount > 0) {
                             Text(
-                                "Exceeded by ₹$exceededAmount",
+                                "Exceeded by $currencySymbol$exceededAmount",
                                 color = Color.Red,
                                 fontWeight = FontWeight.SemiBold
                             )
                         } else {
                             Text(
-                                "Remaining: ₹$safeRemaining",
+                                "Remaining: $currencySymbol$safeRemaining",
                                 color = Color(0xFF2E7D32),
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -335,9 +400,11 @@ fun DashboardScreen(navController: NavController) {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                MostSpentCategoryCard(mostSpent)
+                MostSpentCategoryCard(mostSpent, currencySymbol)
+
                 Spacer(Modifier.height(16.dp))
-                RecentTransactionsSection(navController, transactions)
+                RecentTransactionsSection(navController, transactions, currencySymbol)
+
                 Spacer(modifier = Modifier.height(24.dp))
 
 
@@ -359,19 +426,49 @@ fun DashboardScreen(navController: NavController) {
                             .padding(vertical = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "No spending overview yet",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "Add transactions to see insights and charts here.",
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
+                            Icon(
+                                painter = painterResource(id = R.drawable.add),
+                                contentDescription = "Add Expense",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clickable {
+                                        navController.navigate("add_entry")
+                                    }
+                            )
+
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = "No spending overview yet",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Tap to add your first transaction",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Add transactions to see insights and charts here",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
                     }
 
                 } else {
@@ -419,13 +516,15 @@ fun DashboardScreen(navController: NavController) {
     }
 
 
-        @Composable
-        fun RecentTransactionsSection(
-            navController: NavController,
-            transactions: List<ExpenseEntry>
-        ) {
+@Composable
+fun RecentTransactionsSection(
+    navController: NavController,
+    transactions: List<ExpenseEntry>,
+    currencySymbol: String
+) {
 
-            Column(Modifier.fillMaxWidth()) {
+
+    Column(Modifier.fillMaxWidth()) {
 
                 Row(
                     Modifier.fillMaxWidth(),
@@ -494,7 +593,8 @@ fun DashboardScreen(navController: NavController) {
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
-                                            (if (tx.type == "Expense") "- ₹" else "+ ₹") + tx.amount,
+                                            (if (tx.type == "Expense") "- $currencySymbol" else "+ $currencySymbol") + tx.amount
+                                            ,
                                             color = amountColor,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -516,7 +616,7 @@ fun DashboardScreen(navController: NavController) {
                                         "Food & Dining", "Food", "Groceries" -> R.drawable.dining
                                         "Transportation" -> R.drawable.bus
                                         "Shopping" -> R.drawable.shopping
-                                        "Bills" -> R.drawable.dollars
+                                        "Bills" -> R.drawable.bills
                                         "Entertainment" -> R.drawable.net
                                         "Health" -> R.drawable.health
                                         "Travel" -> R.drawable.earth
@@ -529,7 +629,7 @@ fun DashboardScreen(navController: NavController) {
 
                                 fun getPaymentIcon(method: String?): Int {
                                     return when (method) {
-                                        "Cash" -> R.drawable.cash
+                                        "Cash" -> R.drawable.cashier
                                         "UPI" -> R.drawable.upi
                                         "Credit Card" -> R.drawable.debit
                                         "Debit Card" -> R.drawable.debit
@@ -565,26 +665,46 @@ fun DashboardScreen(navController: NavController) {
         }
 
 @Composable
-        fun StatCard(title: String, value: Double, bg: Color, textColor: Color) {
-            Card(Modifier.width(150.dp).height(80.dp), colors = CardDefaults.cardColors(bg)) {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(title, color = textColor)
-                    Text("₹$value", color = textColor, fontWeight = FontWeight.Bold)
-                }
-            }
+fun StatCard(
+    title: String,
+    value: Double,
+    currencySymbol: String,
+    bg: Color,
+    textColor: Color
+) {
+    Card(
+        modifier = Modifier
+            .width(150.dp)
+            .height(80.dp),
+        colors = CardDefaults.cardColors(containerColor = bg)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(title, color = textColor)
+            Text(
+                text = "$currencySymbol$value",
+                color = textColor,
+                fontWeight = FontWeight.Bold
+            )
         }
+    }
+}
+
+
 @Composable
-        fun MostSpentCategoryCard(mostSpent: Pair<String, Double>?) {
-            Card(Modifier.fillMaxWidth()) {
+fun MostSpentCategoryCard(mostSpent: Pair<String, Double>?, currencySymbol: String
+) {
+
+    Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Text("Most Spent Category", fontWeight = FontWeight.Bold)
                     if (mostSpent != null) {
                         Text(mostSpent.first)
-                        Text("₹${mostSpent.second}")
+                        Text("$currencySymbol${mostSpent.second}")
+
                     } else Text("No data yet")
                 }
             }

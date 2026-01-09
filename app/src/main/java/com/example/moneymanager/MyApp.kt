@@ -17,9 +17,13 @@ class MyApp : Application() {
             AppDatabase::class.java,
             "money_manager_db"
         )
-            // ✅ SAFE migration (keeps existing data)
-            .addMigrations(AppDatabase.MIGRATION_3_4,AppDatabase.MIGRATION_4_5)
-
+            // ✅ ALL required migrations registered
+            .addMigrations(
+                AppDatabase.MIGRATION_3_4,
+                AppDatabase.MIGRATION_4_5,
+                AppDatabase.MIGRATION_5_6,
+                AppDatabase.MIGRATION_6_7
+            )
             .build()
     }
 }

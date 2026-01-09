@@ -1,21 +1,36 @@
 package com.example.moneymanager.data
 
-class ExpenseRepository(private val dao: ExpenseDao) {
+import com.google.firebase.auth.FirebaseAuth
 
-    suspend fun insertExpense(expense: ExpenseEntry) = dao.insertExpense(expense)
+class ExpenseRepository(
+    private val dao: ExpenseDao,
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+) {
 
-    suspend fun getExpenses() = dao.getAllExpenses()
+    // Get current logged-in user's UID
+    private fun currentUserId(): String {
+        return auth.currentUser?.uid
+            ?: throw IllegalStateException("User not logged in")
+    }
 
-    suspend fun getTotalExpense() = dao.getTotalExpense() ?: 0.0
+    suspend fun insertExpense(expense: ExpenseEntry) {
+        dao.insertExpense(
+            expense.copy(userId = currentUserId())
+        )
+    }
 
-    suspend fun getTotalIncome() = dao.getTotalIncome() ?: 0.0
+    suspend fun getExpenses(): List<ExpenseEntry> =
+        dao.getAllExpenses(currentUserId())
 
-    suspend fun getExpensesAfter(date: Long) = dao.getExpensesAfter(date)
+    suspend fun getTotalExpense(): Double =
+        dao.getTotalExpense(currentUserId()) ?: 0.0
 
-    // FIXED — Correct function
+    suspend fun getTotalIncome(): Double =
+        dao.getTotalIncome(currentUserId()) ?: 0.0
 
+    suspend fun getExpensesAfter(date: Long): List<ExpenseEntry> =
+        dao.getExpensesAfter(currentUserId(), date)
 
-    // For flexibility (optional)
     suspend fun getRecentTransactions(count: Int): List<ExpenseEntry> =
-        dao.getRecentTransactions(count)
+        dao.getRecentTransactions(currentUserId(), count)
 }

@@ -168,7 +168,7 @@ fun LoginScreen(
                     Text(
                         text = "Create an Account",
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
